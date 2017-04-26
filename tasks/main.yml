@@ -1,0 +1,27 @@
+---
+- name: Check if ELREPO repo is already configured.
+  stat: path={{ elrepo_repofile_path }}
+  register: elrepo_repofile_result
+
+- name: Install ELREPO repo.
+  yum:
+    name: "{{ elrepo_repo_url }}"
+    state: present
+  register: result
+  until: '"failed" not in result'
+  retries: 3
+  delay: 5
+  when: not elrepo_repofile_result.stat.exists
+
+- name: Import ELREPO GPG key.
+  rpm_key:
+    key: "{{ elrepo_repo_gpg_key_url }}"
+    state: present
+  when: not elrepo_repofile_result.stat.exists
+
+- name: Install ELREPO as a disabled repo.
+  lineinfile:
+    path: "{{ elrepo_repofile_path }}"
+    regexp: '^enabled=1'
+    line: 'enabled=0'
+  when: elrepo_repo_disabled
